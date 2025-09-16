@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pixel Works Studio — Reservas (Empresa)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --c1:#7C4DFF;
+      --c2:#00C9FF;
+      --c3:#FF57B9;
+      --c4:#00FFA3;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:"Poppins", system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Arial, sans-serif;
+      color:#0f172a;
+      background: radial-gradient(1200px 600px at 10% -20%, #9b59ff33, transparent),
+                  radial-gradient(900px 400px at 110% 0%, #00eaff33, transparent),
+                  linear-gradient(135deg, #f8fbff, #eef7ff);
+    }
+    header{
+      position:sticky; top:0; z-index:10;
+      background: linear-gradient(135deg, #7C4DFFcc, #00C9FFcc, #FF57B9cc);
+      border-bottom:1px solid #ffffff55; backdrop-filter: blur(6px);
+    }
+    .container{max-width:1100px; margin:0 auto; padding:18px 20px}
+    .nav{display:flex; align-items:center; justify-content:space-between; gap:12px}
+    .brand{display:flex; align-items:center; gap:12px; color:white; text-decoration:none}
+    .brand img{width:52px; height:52px; border-radius:14px; box-shadow:0 6px 20px #00000022}
+    .brand h1{margin:0; font-size:1.3rem}
+    .btn{
+      appearance:none; border:none; padding:12px 16px; border-radius:12px; font-weight:800; letter-spacing:.3px;
+      background:linear-gradient(135deg, var(--c3), var(--c4)); color:white; cursor:pointer;
+      box-shadow:0 10px 30px #ff57b955; transition: transform .08s ease, box-shadow .2s ease;
+    }
+    .btn:hover{transform: translateY(-1px) scale(1.01); box-shadow:0 16px 44px #ff57b977}
+    .section{max-width:1100px; margin:20px auto; padding:0 20px}
+    .card{background:white; border:1px solid #e6ecf5; border-radius:20px; padding:16px; box-shadow:0 14px 40px #00000010}
+    table{width:100%; border-collapse:collapse}
+    th, td{padding:12px 10px; border-bottom:1px solid #eef2f7; text-align:left}
+    th{font-size:.9rem; color:#334155; text-transform:uppercase; letter-spacing:.6px}
+    .status{font-weight:800}
+    .status.p{color:#ef4444}
+    .status.a{color:#16a34a}
+    .tools{display:flex; gap:8px}
+    .filter{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px}
+    select, input[type="search"]{padding:10px 12px; border-radius:10px; border:1px solid #dbe3ef; background:#f9fbff}
+    .muted{color:#475569; font-size:.92rem}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <a class="brand" href="index.html">
+        <img src="PWS.png" alt="Pixel Works Studio logo">
+        <h1>Panel de Reservas — Pixel Works Studio</h1>
+      </a>
+      <div class="tools">
+        <button class="btn" id="exportBtn">Exportar CSV</button>
+        <a class="btn" href="index.html" style="text-decoration:none; background:linear-gradient(135deg, var(--c1), var(--c2)); box-shadow:0 10px 30px #7c4dff55">Ir a Reservaciones</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="card">
+      <div class="filter">
+        <select id="fEstado">
+          <option value="">Todos los estados</option>
+          <option>Pendiente</option>
+          <option>Atendido</option>
+        </select>
+        <select id="fTipo">
+          <option value="">Todos los tipos</option>
+          <option>software</option>
+          <option>hardware</option>
+        </select>
+        <input id="fSearch" type="search" placeholder="Buscar por nombre o detalle...">
+        <span class="muted">Los cambios se sincronizan con la página del cliente y les llega notificación al marcar <b>Atendido</b>.</span>
+      </div>
+      <div style="overflow:auto">
+      <table id="tabla">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Teléfono</th>
+            <th>Dirección</th>
+            <th>Tipo</th>
+            <th>Detalle</th>
+            <th>Especificaciones</th>
+            <th>Estatus</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
+<script>
+  const STORE_KEY = "pws_reservas";
+
+  function loadAll(){
+    try{
+      const arr = JSON.parse(localStorage.getItem(STORE_KEY) || "[]");
+      // Asegurarse que cada reserva tenga fecha y createdAt
+      return arr.map(r => ({...r, fecha: r.fecha || new Date().toISOString(), createdAt: r.createdAt || Date.now()}));
+    }catch(e){ return []; }
+  }
+
+  function saveAll(arr){
+    localStorage.setItem(STORE_KEY, JSON.stringify(arr));
+    window.dispatchEvent(new StorageEvent("storage", {key: STORE_KEY}));
+  }
+
+  const tbody = document.querySelector("#tabla tbody");
+  const fEstado = document.getElementById("fEstado");
+  const fTipo = document.getElementById("fTipo");
+  const fSearch = document.getElementById("fSearch");
+
+  function render(){
+    const rows = loadAll()
+      .filter(r => !fEstado.value || r.estado === fEstado.value)
+      .filter(r => !fTipo.value || r.tipo === fTipo.value)
+      .filter(r => {
+        const q = fSearch.value.trim().toLowerCase();
+        if(!q) return true;
+        return (r.nombre + " " + r.detalle + " " + (r.especificaciones||"")).toLowerCase().includes(q);
+      })
+      .sort((a,b)=>b.createdAt - a.createdAt);
+
+    tbody.innerHTML = "";
+    rows.forEach(r => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${new Date(r.fecha).toLocaleString()}</td>
+        <td>${r.nombre}</td>
+        <td>${r.telefono}</td>
+        <td>${r.direccion}</td>
+        <td>${r.tipo}</td>
+        <td>${r.detalle}</td>
+        <td style="min-width:220px">${r.especificaciones || "-"}</td>
+        <td class="status ${r.estado === 'Pendiente' ? 'p' : 'a'}">${r.estado}</td>
+        <td>
+          <div class="tools">
+            <button class="btn" data-action="atender" data-id="${r.id}">${r.estado === 'Pendiente' ? 'Atendido' : 'Marcar Pendiente'}</button>
+            <button class="btn" style="background:linear-gradient(135deg,#ef4444,#f97316)" data-action="eliminar" data-id="${r.id}">Eliminar</button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  tbody.addEventListener("click", (e)=>{
+    const btn = e.target.closest("button[data-action]");
+    if(!btn) return;
+    const id = btn.getAttribute("data-id");
+    const action = btn.getAttribute("data-action");
+    const all = loadAll();
+    const ix = all.findIndex(x => x.id === id);
+    if(ix === -1) return;
+    if(action === "atender"){
+      const nuevo = all[ix].estado === "Pendiente" ? "Atendido" : "Pendiente";
+      all[ix].estado = nuevo;
+      if(nuevo === "Atendido"){ all[ix].notif = false; } 
+      saveAll(all);
+      render();
+    }else if(action === "eliminar"){
+      if(confirm("¿Eliminar esta reservación?")){
+        all.splice(ix, 1); saveAll(all); render();
+      }
+    }
+  });
+
+  [fEstado, fTipo, fSearch].forEach(el => el.addEventListener("input", render));
+  window.addEventListener("storage", (ev)=>{ if(ev.key === STORE_KEY) render(); });
+
+  document.getElementById("exportBtn").addEventListener("click", ()=>{
+    const rows = loadAll();
+    const headers = ["Fecha","Nombre","Teléfono","Dirección","Tipo","Detalle","Especificaciones","Estado","ClienteID","ReservaID"];
+    const csv = [headers.join(",")].concat(
+      rows.map(r => [
+        new Date(r.fecha).toLocaleString(),
+        JSON.stringify(r.nombre),
+        JSON.stringify(r.telefono),
+        JSON.stringify(r.direccion),
+        r.tipo, r.detalle,
+        JSON.stringify(r.especificaciones || ""),
+        r.estado, r.cliente || "", r.id
+      ].join(","))
+    ).join("\n");
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "reservas_pws.csv"; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  });
+
+  render();
+</script>
+</body>
+</html>
